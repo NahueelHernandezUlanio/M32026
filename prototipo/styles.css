@@ -1,0 +1,274 @@
+/* Hoja de estilos para sistema interno de mantenimiento */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #f7f7f7;
+  color: #1a1a1a;
+  line-height: 1.4;
+  padding: 16px 12px;
+}
+
+/* Contenedor mobile-first centrado de hasta 480px */
+.app-container {
+  max-width: 480px;
+  margin: 0 auto;
+  background-color: #ffffff;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Header */
+header {
+  border-bottom: 1px solid #d0d0d0;
+  padding: 16px;
+  background-color: #ffffff;
+}
+
+h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0b3b60;
+  margin-bottom: 12px;
+}
+
+/* Navegación por pestañas segmentadas */
+nav {
+  margin-top: 10px;
+  background: #e9ecef;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 4px;
+}
+
+nav li {
+  flex: 1;
+  text-align: center;
+}
+
+nav a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 6px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #495057;
+  min-height: 40px;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+nav a:hover,
+nav a:focus {
+  background-color: #dee2e6;
+  color: #212529;
+}
+
+nav a[aria-current="page"],
+nav a[aria-current="page"]:hover {
+  background: #0b3b60;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Contenido principal */
+main {
+  padding: 16px;
+}
+
+/* Formularios */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+label,
+.etiqueta {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #222222;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="file"],
+textarea,
+select {
+  font-family: inherit;
+  font-size: 1rem;
+  color: #1a1a1a;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  padding: 10px 12px;
+  min-height: 44px;
+  width: 100%;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="file"]:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid #0b3b60;
+  outline-offset: 1px;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+/* Grupo de input con botón escanear al lado */
+.input-con-boton {
+  display: flex;
+  gap: 8px;
+}
+
+.input-con-boton input {
+  flex: 1;
+}
+
+/* Botones */
+button {
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-principal {
+  background-color: #0b3b60;
+  color: #ffffff;
+  border: 1px solid #0b3b60;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.btn-principal:hover {
+  background-color: #082b47;
+}
+
+.btn-principal:active {
+  background-color: #051c30;
+}
+
+.btn-secundario {
+  background-color: #f0f0f0;
+  color: #222222;
+  border: 1px solid #cccccc;
+  white-space: nowrap;
+}
+
+.btn-secundario:hover {
+  background-color: #e4e4e4;
+}
+
+/* Lista de definición de solo lectura */
+.datos-solo-lectura {
+  border: 1px solid #d0d0d0;
+  background-color: #fafafa;
+  border-radius: 4px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  row-gap: 8px;
+  column-gap: 12px;
+  font-size: 0.95rem;
+}
+
+.datos-solo-lectura dt {
+  font-weight: 600;
+  color: #444444;
+}
+
+.datos-solo-lectura dd {
+  color: #111111;
+}
+
+.texto-solo-lectura {
+  font-size: 0.9rem;
+  color: #444444;
+  margin-top: -2px;
+}
+
+/* Bloques de confirmación, alerta, error y aviso */
+.mensaje-alerta,
+.mensaje-confirmacion,
+.mensaje-error,
+.mensaje-aviso {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.mensaje-confirmacion {
+  border-left: 4px solid #3b7a57;
+  background-color: #f2f7f4;
+  color: #1b3826;
+}
+
+.mensaje-error {
+  border-left: 4px solid #a83232;
+  background-color: #fdf3f3;
+  color: #4a1515;
+}
+
+.mensaje-error .btn-secundario {
+  margin-top: 10px;
+  display: block;
+  width: 100%;
+}
+
+.mensaje-aviso {
+  border-left: 4px solid #c2921e;
+  background-color: #fefbf0;
+  color: #4d3a08;
+}
+
+.mensaje-alerta {
+  border-left: 4px solid #0b3b60;
+  background-color: #edf3f8;
+  color: #0b3b60;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* Footer */
+footer {
+  border-top: 1px solid #d0d0d0;
+  padding: 16px;
+  text-align: center;
+  background-color: #fafafa;
+  font-size: 0.75rem;
+  color: #555555;
+  line-height: 1.5;
+}

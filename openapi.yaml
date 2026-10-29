@@ -1,0 +1,191 @@
+openapi: 3.0.3
+
+info:
+  title: API de Stock y Mantenimiento de Planta
+  version: 0.1.0
+  description: Contrato v0 (M2). Cubre las 3 vistas del prototipo - incidencia, registrar uso y cargar stock.
+
+servers:
+  - url: /api
+
+paths:
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Estado del servicio
+      responses:
+        '200':
+          description: El servicio responde.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+
+  /incidencias:
+    post:
+      operationId: crearIncidencia
+      summary: Reporta una incidencia (nace REPORTADA)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [codigo_maquina, descripcion]
+              properties:
+                codigo_maquina: { type: string, example: MAQ-0002 }
+                descripcion: { type: string, example: La caldera pierde presión al arrancar. }
+                turno: { type: string, enum: [manana, tarde, noche], description: 'Si falta, se deriva de la hora del reporte.' }
+                fotos: { type: array, items: { type: string, format: binary } }
+      responses:
+        '201':
+          description: Incidencia creada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, example: INC-0042 }
+                  estado: { type: string, example: REPORTADA }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /destinos-uso:
+    get:
+      operationId: listarDestinosUso
+      summary: Incidencias en reparación y preventivos abiertos del empleado
+      responses:
+        '200':
+          description: Destinos posibles para un uso de repuesto.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, example: INC-0042 }
+                    maquina: { type: string, example: Caldera 2 }
+
+  /repuestos/{codigo}:
+    get:
+      operationId: obtenerRepuesto
+      summary: Datos de un repuesto por su código QR o de barras
+      parameters:
+        - $ref: '#/components/parameters/Codigo'
+      responses:
+        '200':
+          description: Repuesto encontrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  codigo: { type: string, example: REP-6204 }
+                  nombre: { type: string, example: Rodamiento 6204 }
+                  lote: { type: string, example: L-2026-031 }
+                  ubicacion: { type: string, example: A-03-12 }
+                  stock_disponible: { type: integer, example: 12 }
+                  umbral_minimo: { type: integer, example: 5 }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /repuestos/{codigo}/usos:
+    post:
+      operationId: registrarUso
+      summary: Registra el uso de un repuesto y descuenta stock (RN-01)
+      parameters:
+        - $ref: '#/components/parameters/Codigo'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [destino_id]
+              properties:
+                destino_id: { type: string, example: INC-0042 }
+                cantidad: { type: integer, minimum: 1, default: 1 }
+      responses:
+        '201':
+          description: Uso registrado. `alerta_umbral` es true si el stock quedó en o bajo el mínimo (RN-02).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stock_disponible: { type: integer, example: 11 }
+                  alerta_umbral: { type: boolean, example: false }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: Stock insuficiente. No se registra nada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { codigo: STOCK_INSUFICIENTE, mensaje: La cantidad supera el stock disponible (12). }
+
+  /repuestos/{codigo}/recepciones:
+    post:
+      operationId: registrarRecepcion
+      summary: Carga stock recibido con lote y ubicación (RN-08)
+      parameters:
+        - $ref: '#/components/parameters/Codigo'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [lote, cantidad, ubicacion]
+              properties:
+                lote: { type: string, example: L-2026-045 }
+                cantidad: { type: integer, minimum: 1, example: 1 }
+                ubicacion: { type: string, example: A-03-12 }
+                remito: { type: string, format: binary, description: Imagen o PDF del remito del proveedor. }
+      responses:
+        '201':
+          description: Stock cargado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stock_disponible: { type: integer, example: 13 }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /ubicaciones:
+    get:
+      operationId: listarUbicaciones
+      summary: Ubicaciones del almacén
+      responses:
+        '200':
+          description: Códigos de ubicación.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+                example: [A-03-12, A-03-13, B-01-04]
+
+components:
+  parameters:
+    Codigo:
+      name: codigo
+      in: path
+      required: true
+      description: Código QR o de barras del repuesto.
+      schema: { type: string, example: REP-6204 }
+
+  responses:
+    NoEncontrado:
+      description: El recurso no existe.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        codigo: { type: string, example: NO_ENCONTRADO }
+        mensaje: { type: string, example: No existe un recurso con ese código. }

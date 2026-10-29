@@ -1,0 +1,23 @@
+services:
+  mock:
+    image: stoplight/prism:5
+    command: mock -h 0.0.0.0 /contrato/openapi.yaml
+    volumes:
+      - ./openapi.yaml:/contrato/openapi.yaml:ro
+    ports:
+      - "4010:4010"
+
+  api:
+    build: ./api
+    environment:
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+  web:
+    build: ./web
+    depends_on:
+      - mock
+      - api
+    ports:
+      - "8080:80"

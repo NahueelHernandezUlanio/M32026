@@ -1,0 +1,20 @@
+{
+  "name": "planta-mantenimiento",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm --prefix api install && npm --prefix web install",
+    "lint:contrato": "redocly lint openapi.yaml",
+    "gen:api": "npm --prefix web run gen:api",
+    "dev:mock": "prism mock openapi.yaml",
+    "dev:api": "npm --prefix api run dev",
+    "dev:web": "npm --prefix web run dev",
+    "dev": "concurrently -n mock,api,web -c magenta,green,cyan \"npm:dev:mock\" \"npm:dev:api\" \"npm:dev:web\"",
+    "build": "npm --prefix api run build && npm --prefix web run build"
+  },
+  "devDependencies": {
+    "@redocly/cli": "1.25.0",
+    "@stoplight/prism-cli": "5.12.0",
+    "concurrently": "9.1.2"
+  }
+}

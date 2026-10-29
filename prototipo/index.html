@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro de Incidencia</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1 id="titulo">Registro de Incidencia</h1>
+      <nav aria-label="Navegación principal">
+        <ul>
+          <li><a href="#incidencia" data-vista="incidencia">Incidencia</a></li>
+          <li><a href="#uso-repuesto" data-vista="uso-repuesto">Registrar uso</a></li>
+          <li><a href="#carga-stock" data-vista="carga-stock">Cargar stock</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main>
+      <!-- Vista: Registro de incidencia -->
+      <section id="vista-incidencia" class="vista" data-titulo="Registro de Incidencia">
+        <form id="form-incidencia" action="#" method="post">
+          <div class="campo">
+            <label for="codigo-maquina">Máquina</label>
+            <input type="text" id="codigo-maquina" name="codigo-maquina" placeholder="Código QR de la máquina" required>
+          </div>
+
+          <div class="campo">
+            <label for="descripcion">Descripción del problema</label>
+            <textarea id="descripcion" name="descripcion" placeholder="Describí el problema que observaste…" rows="4" required></textarea>
+          </div>
+
+          <div class="campo">
+            <label for="foto">Fotos</label>
+            <input type="file" id="foto" name="foto" accept="image/*" multiple>
+          </div>
+
+          <div class="campo">
+            <label for="turno">Turno</label>
+            <select id="turno" name="turno" required>
+              <option value="manana">Mañana</option>
+              <option value="tarde" selected>Tarde</option>
+              <option value="noche">Noche</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-principal">Enviar</button>
+        </form>
+
+        <div id="preview-incidencia" class="mensaje-alerta" hidden>
+          <p>REPORTADA</p>
+        </div>
+      </section>
+
+      <!-- Vista: Registrar uso de repuesto -->
+      <section id="vista-uso-repuesto" class="vista" data-titulo="Registrar uso de repuesto" hidden>
+        <form id="form-uso" action="#" method="post">
+          <div class="campo">
+            <label for="uso-codigo-repuesto">Código del repuesto</label>
+            <div class="input-con-boton">
+              <input type="text" id="uso-codigo-repuesto" name="codigo-repuesto" placeholder="Código QR o de barras" value="REP-6204" required>
+              <button type="button" class="btn-secundario">Escanear</button>
+            </div>
+          </div>
+
+          <div class="campo">
+            <span class="etiqueta">Datos del repuesto</span>
+            <dl class="datos-solo-lectura">
+              <dt>Nombre:</dt><dd>Rodamiento 6204</dd>
+              <dt>Lote:</dt><dd>L-2026-031</dd>
+              <dt>Stock disponible:</dt><dd class="stock-actual">12</dd>
+              <dt>Ubicación:</dt><dd>A-03-12</dd>
+            </dl>
+          </div>
+
+          <div class="campo">
+            <label for="destino">Destino</label>
+            <select id="destino" name="destino" required>
+              <option value="INC-0042" data-maquina="Caldera 2" selected>INC-0042 · Caldera 2 · En reparación</option>
+              <option value="INC-0045" data-maquina="Fraccionador 1">INC-0045 · Fraccionador 1 · En reparación</option>
+              <option value="PREV-0007" data-maquina="Banda 3">PREV-0007 · Banda 3 · Preventivo</option>
+            </select>
+            <p id="maquina-destino" class="texto-solo-lectura">Máquina destino: Caldera 2</p>
+          </div>
+
+          <div class="campo">
+            <label for="uso-cantidad">Cantidad</label>
+            <input type="number" id="uso-cantidad" name="cantidad" min="1" value="1" required>
+          </div>
+
+          <button type="submit" class="btn-principal">Registrar uso</button>
+        </form>
+
+        <div id="confirmacion-uso" class="mensaje-confirmacion" hidden></div>
+        <div id="error-cantidad" class="mensaje-error" hidden>
+          <p></p>
+          <button type="button" class="btn-secundario">Reportar falta de stock</button>
+        </div>
+        <div id="aviso-umbral" class="mensaje-aviso" hidden>El stock llegó al mínimo. Se generó un pedido de compra</div>
+      </section>
+
+      <!-- Vista: Cargar stock -->
+      <section id="vista-carga-stock" class="vista" data-titulo="Cargar stock" hidden>
+        <form id="form-stock" action="#" method="post">
+          <div class="campo">
+            <label for="stock-codigo-repuesto">Código del repuesto</label>
+            <div class="input-con-boton">
+              <input type="text" id="stock-codigo-repuesto" name="codigo-repuesto" placeholder="Código QR o de barras" value="REP-6204" required>
+              <button type="button" class="btn-secundario">Escanear</button>
+            </div>
+          </div>
+
+          <div class="campo">
+            <span class="etiqueta">Datos del repuesto</span>
+            <dl class="datos-solo-lectura">
+              <dt>Nombre:</dt><dd>Rodamiento 6204</dd>
+              <dt>Stock actual:</dt><dd class="stock-actual">12</dd>
+              <dt>Stock mínimo:</dt><dd>5</dd>
+            </dl>
+          </div>
+
+          <div class="campo">
+            <label for="lote">Lote</label>
+            <input type="text" id="lote" name="lote" placeholder="Ej: L-2026-045" required>
+          </div>
+
+          <div class="campo">
+            <label for="stock-cantidad">Cantidad recibida</label>
+            <input type="number" id="stock-cantidad" name="cantidad" min="1" value="1" required>
+          </div>
+
+          <div class="campo">
+            <label for="ubicacion">Ubicación en depósito</label>
+            <select id="ubicacion" name="ubicacion" required>
+              <option value="A-03-12" selected>A-03-12</option>
+              <option value="A-03-13">A-03-13</option>
+              <option value="B-01-04">B-01-04</option>
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="remito">Remito</label>
+            <input type="file" id="remito" name="remito" accept="image/*,application/pdf">
+          </div>
+
+          <button type="submit" class="btn-principal">Cargar stock</button>
+        </form>
+
+        <div id="confirmacion-stock" class="mensaje-confirmacion" hidden></div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Turno tarde</p>
+      <p>- GRUPO 3 - Desarrollo de Software - S32 - UTN -</p>
+      <p>- HERNANDEZ - HRYNKIEWICZ - HURST -</p>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      const STOCK_MINIMO = 5;
+      let stock = 12;
+
+      const vistas = document.querySelectorAll(".vista");
+      const enlaces = document.querySelectorAll("nav a[data-vista]");
+      const titulo = document.getElementById("titulo");
+
+      function mostrarVista() {
+        const nombre = location.hash.slice(1);
+        const destino = document.getElementById("vista-" + nombre) || vistas[0];
+
+        vistas.forEach(function (vista) {
+          vista.hidden = vista !== destino;
+        });
+
+        enlaces.forEach(function (enlace) {
+          if ("vista-" + enlace.dataset.vista === destino.id) {
+            enlace.setAttribute("aria-current", "page");
+          } else {
+            enlace.removeAttribute("aria-current");
+          }
+        });
+
+        titulo.textContent = destino.dataset.titulo;
+        document.title = destino.dataset.titulo;
+      }
+
+      function actualizarStock() {
+        document.querySelectorAll(".stock-actual").forEach(function (celda) {
+          celda.textContent = stock;
+        });
+      }
+
+      window.addEventListener("hashchange", mostrarVista);
+      mostrarVista();
+
+      document.getElementById("form-incidencia").addEventListener("submit", function (evento) {
+        evento.preventDefault();
+        document.getElementById("preview-incidencia").hidden = false;
+        this.reset();
+      });
+
+      const selectDestino = document.getElementById("destino");
+      selectDestino.addEventListener("change", function () {
+        const maquina = selectDestino.selectedOptions[0].dataset.maquina;
+        document.getElementById("maquina-destino").textContent = "Máquina destino: " + maquina;
+      });
+
+      document.getElementById("form-uso").addEventListener("submit", function (evento) {
+        evento.preventDefault();
+        const cantidad = Number(document.getElementById("uso-cantidad").value);
+        const confirmacion = document.getElementById("confirmacion-uso");
+        const error = document.getElementById("error-cantidad");
+        const aviso = document.getElementById("aviso-umbral");
+
+        confirmacion.hidden = true;
+        error.hidden = true;
+        aviso.hidden = true;
+
+        if (cantidad > stock) {
+          error.querySelector("p").textContent = "La cantidad supera el stock disponible (" + stock + ")";
+          error.hidden = false;
+          return;
+        }
+
+        stock -= cantidad;
+        actualizarStock();
+        confirmacion.textContent = "Uso registrado. Stock resultante: " + stock;
+        confirmacion.hidden = false;
+        aviso.hidden = stock > STOCK_MINIMO;
+      });
+
+      document.getElementById("form-stock").addEventListener("submit", function (evento) {
+        evento.preventDefault();
+        const cantidad = Number(document.getElementById("stock-cantidad").value);
+        const confirmacion = document.getElementById("confirmacion-stock");
+
+        stock += cantidad;
+        actualizarStock();
+        confirmacion.textContent = "Stock cargado. Stock resultante: " + stock;
+        confirmacion.hidden = false;
+        document.getElementById("lote").value = "";
+        document.getElementById("remito").value = "";
+      });
+    })();
+  </script>
+</body>
+</html>

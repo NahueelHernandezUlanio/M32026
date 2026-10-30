@@ -74,6 +74,11 @@ export default function RegistrarUso() {
               <dt>Nombre:</dt><dd>{repuesto.nombre}</dd>
               <dt>Lote:</dt><dd>{repuesto.lote}</dd>
               <dt>Stock disponible:</dt><dd>{repuesto.stock_disponible}</dd>
+              {repuesto.stock_reservado > 0 && (
+                <>
+                  <dt>Reservado:</dt><dd>{repuesto.stock_reservado}</dd>
+                </>
+              )}
               <dt>Ubicación:</dt><dd>{repuesto.ubicacion}</dd>
             </dl>
           ) : (

@@ -1,6 +1,20 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: planta
+      POSTGRES_USER: planta
+      POSTGRES_PASSWORD: planta
+    volumes:
+      - datos-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U planta -d planta"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   mock:
-    image: stoplight/prism:5
+    image: stoplight/prism:5.14.3
     command: mock -h 0.0.0.0 /contrato/openapi.yaml
     volumes:
       - ./openapi.yaml:/contrato/openapi.yaml:ro
@@ -10,9 +24,15 @@ services:
   api:
     build: ./api
     environment:
-      PORT: 3000
+      DATABASE_URL: postgresql+psycopg://planta:planta@db:5432/planta
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - archivos:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
-      - "3000:3000"
+      - "8000:8000"
 
   web:
     build: ./web
@@ -21,3 +41,7 @@ services:
       - api
     ports:
       - "8080:80"
+
+volumes:
+  datos-postgres:
+  archivos:

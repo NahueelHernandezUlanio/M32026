@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Usuario y rol asociados al token */
+        get: operations["usuarioActual"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/incidencias": {
         parameters: {
             query?: never;
@@ -30,8 +47,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reporta una incidencia (nace REPORTADA) */
+        /** Reporta una incidencia (nace REPORTADA). Roles OPERARIO, MANTENIMIENTO, ENCARGADO. */
         post: operations["crearIncidencia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/incidencias/{codigo}/reparacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pasa una incidencia REPORTADA a EN_REPARACION. Roles MANTENIMIENTO, ENCARGADO. */
+        post: operations["iniciarReparacion"];
         delete?: never;
         options?: never;
         head?: never;
@@ -45,7 +79,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Incidencias en reparación y preventivos abiertos del empleado */
+        /** Incidencias en reparación (destinos posibles de un uso). Roles MANTENIMIENTO, ENCARGADO. */
         get: operations["listarDestinosUso"];
         put?: never;
         post?: never;
@@ -62,7 +96,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Datos de un repuesto por su código QR o de barras */
+        /** Datos y stock de un repuesto por su código QR o de barras */
         get: operations["obtenerRepuesto"];
         put?: never;
         post?: never;
@@ -81,7 +115,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Registra el uso de un repuesto y descuenta stock (RN-01) */
+        /** Registra el uso de un repuesto en una incidencia y descuenta stock físico (RN-01). Roles MANTENIMIENTO, ENCARGADO. */
         post: operations["registrarUso"];
         delete?: never;
         options?: never;
@@ -98,7 +132,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Carga stock recibido con lote y ubicación (RN-08) */
+        /** Carga stock recibido con lote y ubicación (RN-08). Roles MANTENIMIENTO, ENCARGADO. */
         post: operations["registrarRecepcion"];
         delete?: never;
         options?: never;
@@ -123,15 +157,147 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reservas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reservas activas */
+        get: operations["listarReservasActivas"];
+        put?: never;
+        /** Reserva unidades para un mantenimiento preventivo (RN-05). Roles MANTENIMIENTO, ENCARGADO. */
+        post: operations["crearReserva"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reservas/{codigo}/liberacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Libera una reserva. Solo ENCARGADO; se notifica de inmediato (RN-05). */
+        post: operations["liberarReserva"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reservas/{codigo}/ejecucion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ejecuta el preventivo, descuenta stock físico y libera la reserva en una transacción (RN-10). Roles MANTENIMIENTO, ENCARGADO. */
+        post: operations["ejecutarReserva"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         Error: {
             /** @example NO_ENCONTRADO */
-            codigo?: string;
+            codigo: string;
             /** @example No existe un recurso con ese código. */
-            mensaje?: string;
+            mensaje: string;
+        };
+        /** @enum {string} */
+        Rol: "OPERARIO" | "MANTENIMIENTO" | "ENCARGADO" | "CONSULTA";
+        /**
+         * @description Si falta, se deriva de la hora del reporte en horario de planta.
+         * @enum {string}
+         */
+        Turno: "manana" | "tarde" | "noche";
+        Usuario: {
+            /** @example Mantenimiento Demo */
+            nombre: string;
+            rol: components["schemas"]["Rol"];
+        };
+        Incidencia: {
+            /** @example INC-0003 */
+            id: string;
+            /**
+             * @example REPORTADA
+             * @enum {string}
+             */
+            estado: "REPORTADA" | "EN_REPARACION" | "RESUELTA";
+        };
+        /** @description `stock_disponible = stock_fisico - stock_reservado`. */
+        Stock: {
+            /** @example 12 */
+            stock_fisico: number;
+            /** @example 0 */
+            stock_reservado: number;
+            /** @example 12 */
+            stock_disponible: number;
+        };
+        Repuesto: components["schemas"]["Stock"] & {
+            /** @example REP-6204 */
+            codigo: string;
+            /** @example Rodamiento 6204 */
+            nombre: string;
+            /** @example L-2026-031 */
+            lote: string | null;
+            /** @example A-03-12 */
+            ubicacion: string | null;
+            /** @example 5 */
+            umbral_minimo: number;
+        };
+        Reserva: {
+            /** @example RES-0001 */
+            id: string;
+            /** @example REP-6204 */
+            repuesto_codigo: string;
+            /** @example 4 */
+            cantidad: number;
+            /** @example Preventivo mensual Caldera 2 */
+            motivo: string;
+            /**
+             * @example ACTIVA
+             * @enum {string}
+             */
+            estado: "ACTIVA" | "EJECUTADA" | "LIBERADA";
+        };
+        /**
+         * @example {
+         *       "reserva": {
+         *         "id": "RES-0001",
+         *         "repuesto_codigo": "REP-6204",
+         *         "cantidad": 4,
+         *         "motivo": "Preventivo mensual Caldera 2",
+         *         "estado": "ACTIVA"
+         *       },
+         *       "stock": {
+         *         "stock_fisico": 12,
+         *         "stock_reservado": 4,
+         *         "stock_disponible": 8
+         *       },
+         *       "alerta_umbral": false
+         *     }
+         */
+        OperacionReserva: {
+            reserva: components["schemas"]["Reserva"];
+            stock: components["schemas"]["Stock"];
+            /** @example false */
+            alerta_umbral: boolean;
         };
     };
     responses: {
@@ -141,6 +307,72 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
+                /**
+                 * @example {
+                 *       "codigo": "NO_ENCONTRADO",
+                 *       "mensaje": "No existe un recurso con ese código."
+                 *     }
+                 */
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Falta el token o no es válido. */
+        NoAutenticado: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "codigo": "NO_AUTENTICADO",
+                 *       "mensaje": "Falta un token válido en el header Authorization."
+                 *     }
+                 */
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description El rol del usuario no permite la operación. */
+        PermisoDenegado: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "codigo": "PERMISO_DENEGADO",
+                 *       "mensaje": "Tu rol no tiene permiso para esta operación."
+                 *     }
+                 */
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description El request no cumple el contrato. */
+        DatosInvalidos: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "codigo": "DATOS_INVALIDOS",
+                 *       "mensaje": "Datos inválidos en: cantidad."
+                 *     }
+                 */
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description La reserva ya fue liberada o ejecutada. */
+        ReservaNoActiva: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "codigo": "RESERVA_NO_ACTIVA",
+                 *       "mensaje": "La reserva RES-0001 ya está LIBERADA."
+                 *     }
+                 */
                 "application/json": components["schemas"]["Error"];
             };
         };
@@ -148,6 +380,7 @@ export interface components {
     parameters: {
         /** @description Código QR o de barras del repuesto. */
         Codigo: string;
+        CodigoReserva: string;
     };
     requestBodies: never;
     headers: never;
@@ -172,10 +405,31 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** @example ok */
-                        status?: string;
+                        status: string;
                     };
                 };
             };
+        };
+    };
+    usuarioActual: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Usuario autenticado. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Usuario"];
+                };
+            };
+            401: components["responses"]["NoAutenticado"];
         };
     };
     crearIncidencia: {
@@ -192,11 +446,7 @@ export interface operations {
                     codigo_maquina: string;
                     /** @example La caldera pierde presión al arrancar. */
                     descripcion: string;
-                    /**
-                     * @description Si falta, se deriva de la hora del reporte.
-                     * @enum {string}
-                     */
-                    turno?: "manana" | "tarde" | "noche";
+                    turno?: components["schemas"]["Turno"];
                     fotos?: string[];
                 };
             };
@@ -208,15 +458,59 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @example INC-0042 */
-                        id?: string;
-                        /** @example REPORTADA */
-                        estado?: string;
-                    };
+                    "application/json": components["schemas"]["Incidencia"];
                 };
             };
+            401: components["responses"]["NoAutenticado"];
+            403: components["responses"]["PermisoDenegado"];
             404: components["responses"]["NoEncontrado"];
+            422: components["responses"]["DatosInvalidos"];
+        };
+    };
+    iniciarReparacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Incidencia en reparación. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "INC-0003",
+                     *       "estado": "EN_REPARACION"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Incidencia"];
+                };
+            };
+            401: components["responses"]["NoAutenticado"];
+            403: components["responses"]["PermisoDenegado"];
+            404: components["responses"]["NoEncontrado"];
+            /** @description La incidencia no está REPORTADA. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "codigo": "TRANSICION_INVALIDA",
+                     *       "mensaje": "Solo una incidencia REPORTADA pasa a reparación."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     listarDestinosUso: {
@@ -235,13 +529,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        /** @example INC-0042 */
-                        id?: string;
+                        /** @example INC-0001 */
+                        id: string;
                         /** @example Caldera 2 */
-                        maquina?: string;
+                        maquina: string;
                     }[];
                 };
             };
+            401: components["responses"]["NoAutenticado"];
+            403: components["responses"]["PermisoDenegado"];
         };
     };
     obtenerRepuesto: {
@@ -262,22 +558,10 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @example REP-6204 */
-                        codigo?: string;
-                        /** @example Rodamiento 6204 */
-                        nombre?: string;
-                        /** @example L-2026-031 */
-                        lote?: string;
-                        /** @example A-03-12 */
-                        ubicacion?: string;
-                        /** @example 12 */
-                        stock_disponible?: number;
-                        /** @example 5 */
-                        umbral_minimo?: number;
-                    };
+                    "application/json": components["schemas"]["Repuesto"];
                 };
             };
+            401: components["responses"]["NoAutenticado"];
             404: components["responses"]["NoEncontrado"];
         };
     };
@@ -294,7 +578,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @example INC-0042 */
+                    /** @example INC-0001 */
                     destino_id: string;
                     /** @default 1 */
                     cantidad?: number;
@@ -302,30 +586,48 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Uso registrado. `alerta_umbral` es true si el stock quedó en o bajo el mínimo (RN-02). */
+            /** @description Uso registrado. `alerta_umbral` es true si el stock disponible quedó en o bajo el mínimo (RN-02). */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @example 11 */
-                        stock_disponible?: number;
+                    /**
+                     * @example {
+                     *       "stock_fisico": 11,
+                     *       "stock_reservado": 0,
+                     *       "stock_disponible": 11,
+                     *       "alerta_umbral": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Stock"] & {
                         /** @example false */
-                        alerta_umbral?: boolean;
+                        alerta_umbral: boolean;
                     };
                 };
             };
+            401: components["responses"]["NoAutenticado"];
+            403: components["responses"]["PermisoDenegado"];
             404: components["responses"]["NoEncontrado"];
-            /** @description Stock insuficiente. No se registra nada. */
+            /**
+             * @description No se registra nada. Códigos posibles:
+             *     `STOCK_INSUFICIENTE` (RN-01), `STOCK_RESERVADO` (RN-05), `DESTINO_INVALIDO` (la incidencia no está en reparación).
+             */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "codigo": "STOCK_INSUFICIENTE",
+                     *       "mensaje": "La cantidad supera el stock disponible (12)."
+                     *     }
+                     */
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            422: components["responses"]["DatosInvalidos"];
         };
     };
     registrarRecepcion: {
@@ -362,13 +664,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @example 13 */
-                        stock_disponible?: number;
-                    };
+                    /**
+                     * @example {
+                     *       "stock_fisico": 13,
+                     *       "stock_reservado": 0,
+                     *       "stock_disponible": 13
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Stock"];
                 };
             };
+            401: components["responses"]["NoAutenticado"];
+            403: components["responses"]["PermisoDenegado"];
             404: components["responses"]["NoEncontrado"];
+            422: components["responses"]["DatosInvalidos"];
         };
     };
     listarUbicaciones: {
@@ -389,6 +698,164 @@ export interface operations {
                     "application/json": string[];
                 };
             };
+            401: components["responses"]["NoAutenticado"];
+        };
+    };
+    listarReservasActivas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reservas en estado ACTIVA. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Reserva"][];
+                };
+            };
+            401: components["responses"]["NoAutenticado"];
+        };
+    };
+    crearReserva: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example REP-6204 */
+                    repuesto_codigo: string;
+                    /** @example 4 */
+                    cantidad: number;
+                    /** @example Preventivo mensual Caldera 2 */
+                    motivo: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Reserva creada. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperacionReserva"];
+                };
+            };
+            401: components["responses"]["NoAutenticado"];
+            403: components["responses"]["PermisoDenegado"];
+            404: components["responses"]["NoEncontrado"];
+            /** @description No hay stock disponible suficiente para reservar. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "codigo": "STOCK_INSUFICIENTE",
+                     *       "mensaje": "No se pueden reservar 13 unidades: hay 12 disponibles."
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            422: components["responses"]["DatosInvalidos"];
+        };
+    };
+    liberarReserva: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codigo: components["parameters"]["CodigoReserva"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reserva liberada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "reserva": {
+                     *         "id": "RES-0001",
+                     *         "repuesto_codigo": "REP-6204",
+                     *         "cantidad": 4,
+                     *         "motivo": "Preventivo mensual Caldera 2",
+                     *         "estado": "LIBERADA"
+                     *       },
+                     *       "stock": {
+                     *         "stock_fisico": 12,
+                     *         "stock_reservado": 0,
+                     *         "stock_disponible": 12
+                     *       },
+                     *       "alerta_umbral": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["OperacionReserva"];
+                };
+            };
+            401: components["responses"]["NoAutenticado"];
+            403: components["responses"]["PermisoDenegado"];
+            404: components["responses"]["NoEncontrado"];
+            409: components["responses"]["ReservaNoActiva"];
+        };
+    };
+    ejecutarReserva: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codigo: components["parameters"]["CodigoReserva"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reserva ejecutada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "reserva": {
+                     *         "id": "RES-0001",
+                     *         "repuesto_codigo": "REP-6204",
+                     *         "cantidad": 4,
+                     *         "motivo": "Preventivo mensual Caldera 2",
+                     *         "estado": "EJECUTADA"
+                     *       },
+                     *       "stock": {
+                     *         "stock_fisico": 8,
+                     *         "stock_reservado": 0,
+                     *         "stock_disponible": 8
+                     *       },
+                     *       "alerta_umbral": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["OperacionReserva"];
+                };
+            };
+            401: components["responses"]["NoAutenticado"];
+            403: components["responses"]["PermisoDenegado"];
+            404: components["responses"]["NoEncontrado"];
+            409: components["responses"]["ReservaNoActiva"];
         };
     };
 }

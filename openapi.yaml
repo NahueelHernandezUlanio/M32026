@@ -2,17 +2,39 @@ openapi: 3.0.3
 
 info:
   title: API de Stock y Mantenimiento de Planta
-  version: 0.1.0
-  description: Contrato v0 (M2). Cubre las 3 vistas del prototipo - incidencia, registrar uso y cargar stock.
+  version: 0.2.0
+  description: |
+    Contrato v0.2 (M4). Cubre las 3 vistas del prototipo (incidencia, registrar uso, cargar stock)
+    más el ciclo de reservas (RN-05, RN-10) y el auth stub con roles.
+
+    Auth stub: header `Authorization: Bearer <token>` con uno de estos tokens fijos:
+    `token-operario`, `token-mantenimiento`, `token-encargado`, `token-consulta`.
 
 servers:
   - url: /api
 
+security:
+  - bearerAuth: []
+
+tags:
+  - name: sistema
+    description: Estado del servicio (walking skeleton).
+  - name: auth
+    description: Auth stub con tokens fijos por rol.
+  - name: incidencias
+    description: Reporte de incidencias y paso a reparación.
+  - name: stock
+    description: Consulta de repuestos, usos (RN-01, RN-02) y recepciones (RN-08).
+  - name: reservas
+    description: Reservas para mantenimiento preventivo (RN-05, RN-10).
+
 paths:
   /health:
     get:
+      tags: [sistema]
       operationId: healthCheck
       summary: Estado del servicio
+      security: []
       responses:
         '200':
           description: El servicio responde.
@@ -20,13 +42,28 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [status]
                 properties:
                   status: { type: string, example: ok }
 
+  /auth/me:
+    get:
+      tags: [auth]
+      operationId: usuarioActual
+      summary: Usuario y rol asociados al token
+      responses:
+        '200':
+          description: Usuario autenticado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+
   /incidencias:
     post:
+      tags: [incidencias]
       operationId: crearIncidencia
-      summary: Reporta una incidencia (nace REPORTADA)
+      summary: Reporta una incidencia (nace REPORTADA). Roles OPERARIO, MANTENIMIENTO, ENCARGADO.
       requestBody:
         required: true
         content:
@@ -36,25 +73,53 @@ paths:
               required: [codigo_maquina, descripcion]
               properties:
                 codigo_maquina: { type: string, example: MAQ-0002 }
-                descripcion: { type: string, example: La caldera pierde presión al arrancar. }
-                turno: { type: string, enum: [manana, tarde, noche], description: 'Si falta, se deriva de la hora del reporte.' }
+                descripcion: { type: string, minLength: 1, example: La caldera pierde presión al arrancar. }
+                turno:
+                  $ref: '#/components/schemas/Turno'
                 fotos: { type: array, items: { type: string, format: binary } }
       responses:
         '201':
           description: Incidencia creada.
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  id: { type: string, example: INC-0042 }
-                  estado: { type: string, example: REPORTADA }
+              schema: { $ref: '#/components/schemas/Incidencia' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/PermisoDenegado' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422': { $ref: '#/components/responses/DatosInvalidos' }
+
+  /incidencias/{codigo}/reparacion:
+    post:
+      tags: [incidencias]
+      operationId: iniciarReparacion
+      summary: Pasa una incidencia REPORTADA a EN_REPARACION. Roles MANTENIMIENTO, ENCARGADO.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema: { type: string, example: INC-0003 }
+      responses:
+        '200':
+          description: Incidencia en reparación.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Incidencia' }
+              example: { id: INC-0003, estado: EN_REPARACION }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/PermisoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: La incidencia no está REPORTADA.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { codigo: TRANSICION_INVALIDA, mensaje: Solo una incidencia REPORTADA pasa a reparación. }
 
   /destinos-uso:
     get:
+      tags: [incidencias]
       operationId: listarDestinosUso
-      summary: Incidencias en reparación y preventivos abiertos del empleado
+      summary: Incidencias en reparación (destinos posibles de un uso). Roles MANTENIMIENTO, ENCARGADO.
       responses:
         '200':
           description: Destinos posibles para un uso de repuesto.
@@ -64,14 +129,18 @@ paths:
                 type: array
                 items:
                   type: object
+                  required: [id, maquina]
                   properties:
-                    id: { type: string, example: INC-0042 }
+                    id: { type: string, example: INC-0001 }
                     maquina: { type: string, example: Caldera 2 }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/PermisoDenegado' }
 
   /repuestos/{codigo}:
     get:
+      tags: [stock]
       operationId: obtenerRepuesto
-      summary: Datos de un repuesto por su código QR o de barras
+      summary: Datos y stock de un repuesto por su código QR o de barras
       parameters:
         - $ref: '#/components/parameters/Codigo'
       responses:
@@ -79,21 +148,15 @@ paths:
           description: Repuesto encontrado.
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  codigo: { type: string, example: REP-6204 }
-                  nombre: { type: string, example: Rodamiento 6204 }
-                  lote: { type: string, example: L-2026-031 }
-                  ubicacion: { type: string, example: A-03-12 }
-                  stock_disponible: { type: integer, example: 12 }
-                  umbral_minimo: { type: integer, example: 5 }
+              schema: { $ref: '#/components/schemas/Repuesto' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
 
   /repuestos/{codigo}/usos:
     post:
+      tags: [stock]
       operationId: registrarUso
-      summary: Registra el uso de un repuesto y descuenta stock (RN-01)
+      summary: Registra el uso de un repuesto en una incidencia y descuenta stock físico (RN-01). Roles MANTENIMIENTO, ENCARGADO.
       parameters:
         - $ref: '#/components/parameters/Codigo'
       requestBody:
@@ -104,30 +167,39 @@ paths:
               type: object
               required: [destino_id]
               properties:
-                destino_id: { type: string, example: INC-0042 }
+                destino_id: { type: string, example: INC-0001 }
                 cantidad: { type: integer, minimum: 1, default: 1 }
       responses:
         '201':
-          description: Uso registrado. `alerta_umbral` es true si el stock quedó en o bajo el mínimo (RN-02).
+          description: Uso registrado. `alerta_umbral` es true si el stock disponible quedó en o bajo el mínimo (RN-02).
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  stock_disponible: { type: integer, example: 11 }
-                  alerta_umbral: { type: boolean, example: false }
+                allOf:
+                  - $ref: '#/components/schemas/Stock'
+                  - type: object
+                    required: [alerta_umbral]
+                    properties:
+                      alerta_umbral: { type: boolean, example: false }
+              example: { stock_fisico: 11, stock_reservado: 0, stock_disponible: 11, alerta_umbral: false }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/PermisoDenegado' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '409':
-          description: Stock insuficiente. No se registra nada.
+          description: |
+            No se registra nada. Códigos posibles:
+            `STOCK_INSUFICIENTE` (RN-01), `STOCK_RESERVADO` (RN-05), `DESTINO_INVALIDO` (la incidencia no está en reparación).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
               example: { codigo: STOCK_INSUFICIENTE, mensaje: La cantidad supera el stock disponible (12). }
+        '422': { $ref: '#/components/responses/DatosInvalidos' }
 
   /repuestos/{codigo}/recepciones:
     post:
+      tags: [stock]
       operationId: registrarRecepcion
-      summary: Carga stock recibido con lote y ubicación (RN-08)
+      summary: Carga stock recibido con lote y ubicación (RN-08). Roles MANTENIMIENTO, ENCARGADO.
       parameters:
         - $ref: '#/components/parameters/Codigo'
       requestBody:
@@ -138,7 +210,7 @@ paths:
               type: object
               required: [lote, cantidad, ubicacion]
               properties:
-                lote: { type: string, example: L-2026-045 }
+                lote: { type: string, minLength: 1, example: L-2026-045 }
                 cantidad: { type: integer, minimum: 1, example: 1 }
                 ubicacion: { type: string, example: A-03-12 }
                 remito: { type: string, format: binary, description: Imagen o PDF del remito del proveedor. }
@@ -147,14 +219,16 @@ paths:
           description: Stock cargado.
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  stock_disponible: { type: integer, example: 13 }
+              schema: { $ref: '#/components/schemas/Stock' }
+              example: { stock_fisico: 13, stock_reservado: 0, stock_disponible: 13 }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/PermisoDenegado' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422': { $ref: '#/components/responses/DatosInvalidos' }
 
   /ubicaciones:
     get:
+      tags: [stock]
       operationId: listarUbicaciones
       summary: Ubicaciones del almacén
       responses:
@@ -166,8 +240,104 @@ paths:
                 type: array
                 items: { type: string }
                 example: [A-03-12, A-03-13, B-01-04]
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+
+  /reservas:
+    get:
+      tags: [reservas]
+      operationId: listarReservasActivas
+      summary: Reservas activas
+      responses:
+        '200':
+          description: Reservas en estado ACTIVA.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Reserva' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+    post:
+      tags: [reservas]
+      operationId: crearReserva
+      summary: Reserva unidades para un mantenimiento preventivo (RN-05). Roles MANTENIMIENTO, ENCARGADO.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [repuesto_codigo, cantidad, motivo]
+              properties:
+                repuesto_codigo: { type: string, example: REP-6204 }
+                cantidad: { type: integer, minimum: 1, example: 4 }
+                motivo: { type: string, minLength: 1, example: Preventivo mensual Caldera 2 }
+      responses:
+        '201':
+          description: Reserva creada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OperacionReserva' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/PermisoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: No hay stock disponible suficiente para reservar.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { codigo: STOCK_INSUFICIENTE, mensaje: 'No se pueden reservar 13 unidades: hay 12 disponibles.' }
+        '422': { $ref: '#/components/responses/DatosInvalidos' }
+
+  /reservas/{codigo}/liberacion:
+    post:
+      tags: [reservas]
+      operationId: liberarReserva
+      summary: Libera una reserva. Solo ENCARGADO; se notifica de inmediato (RN-05).
+      parameters:
+        - $ref: '#/components/parameters/CodigoReserva'
+      responses:
+        '200':
+          description: Reserva liberada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OperacionReserva' }
+              example:
+                reserva: { id: RES-0001, repuesto_codigo: REP-6204, cantidad: 4, motivo: Preventivo mensual Caldera 2, estado: LIBERADA }
+                stock: { stock_fisico: 12, stock_reservado: 0, stock_disponible: 12 }
+                alerta_umbral: false
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/PermisoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/ReservaNoActiva' }
+
+  /reservas/{codigo}/ejecucion:
+    post:
+      tags: [reservas]
+      operationId: ejecutarReserva
+      summary: Ejecuta el preventivo, descuenta stock físico y libera la reserva en una transacción (RN-10). Roles MANTENIMIENTO, ENCARGADO.
+      parameters:
+        - $ref: '#/components/parameters/CodigoReserva'
+      responses:
+        '200':
+          description: Reserva ejecutada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OperacionReserva' }
+              example:
+                reserva: { id: RES-0001, repuesto_codigo: REP-6204, cantidad: 4, motivo: Preventivo mensual Caldera 2, estado: EJECUTADA }
+                stock: { stock_fisico: 8, stock_reservado: 0, stock_disponible: 8 }
+                alerta_umbral: false
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/PermisoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/ReservaNoActiva' }
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
   parameters:
     Codigo:
       name: codigo
@@ -175,6 +345,11 @@ components:
       required: true
       description: Código QR o de barras del repuesto.
       schema: { type: string, example: REP-6204 }
+    CodigoReserva:
+      name: codigo
+      in: path
+      required: true
+      schema: { type: string, example: RES-0001 }
 
   responses:
     NoEncontrado:
@@ -182,10 +357,102 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+          example: { codigo: NO_ENCONTRADO, mensaje: No existe un recurso con ese código. }
+    NoAutenticado:
+      description: Falta el token o no es válido.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { codigo: NO_AUTENTICADO, mensaje: Falta un token válido en el header Authorization. }
+    PermisoDenegado:
+      description: El rol del usuario no permite la operación.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { codigo: PERMISO_DENEGADO, mensaje: Tu rol no tiene permiso para esta operación. }
+    DatosInvalidos:
+      description: El request no cumple el contrato.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { codigo: DATOS_INVALIDOS, mensaje: 'Datos inválidos en: cantidad.' }
+    ReservaNoActiva:
+      description: La reserva ya fue liberada o ejecutada.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { codigo: RESERVA_NO_ACTIVA, mensaje: La reserva RES-0001 ya está LIBERADA. }
 
   schemas:
     Error:
       type: object
+      required: [codigo, mensaje]
       properties:
         codigo: { type: string, example: NO_ENCONTRADO }
         mensaje: { type: string, example: No existe un recurso con ese código. }
+
+    Rol:
+      type: string
+      enum: [OPERARIO, MANTENIMIENTO, ENCARGADO, CONSULTA]
+
+    Turno:
+      type: string
+      enum: [manana, tarde, noche]
+      description: Si falta, se deriva de la hora del reporte en horario de planta.
+
+    Usuario:
+      type: object
+      required: [nombre, rol]
+      properties:
+        nombre: { type: string, example: Mantenimiento Demo }
+        rol: { $ref: '#/components/schemas/Rol' }
+
+    Incidencia:
+      type: object
+      required: [id, estado]
+      properties:
+        id: { type: string, example: INC-0003 }
+        estado: { type: string, enum: [REPORTADA, EN_REPARACION, RESUELTA], example: REPORTADA }
+
+    Stock:
+      type: object
+      required: [stock_fisico, stock_reservado, stock_disponible]
+      description: '`stock_disponible = stock_fisico - stock_reservado`.'
+      properties:
+        stock_fisico: { type: integer, example: 12 }
+        stock_reservado: { type: integer, example: 0 }
+        stock_disponible: { type: integer, example: 12 }
+
+    Repuesto:
+      allOf:
+        - $ref: '#/components/schemas/Stock'
+        - type: object
+          required: [codigo, nombre, lote, ubicacion, umbral_minimo]
+          properties:
+            codigo: { type: string, example: REP-6204 }
+            nombre: { type: string, example: Rodamiento 6204 }
+            lote: { type: string, nullable: true, example: L-2026-031 }
+            ubicacion: { type: string, nullable: true, example: A-03-12 }
+            umbral_minimo: { type: integer, example: 5 }
+
+    Reserva:
+      type: object
+      required: [id, repuesto_codigo, cantidad, motivo, estado]
+      properties:
+        id: { type: string, example: RES-0001 }
+        repuesto_codigo: { type: string, example: REP-6204 }
+        cantidad: { type: integer, example: 4 }
+        motivo: { type: string, example: Preventivo mensual Caldera 2 }
+        estado: { type: string, enum: [ACTIVA, EJECUTADA, LIBERADA], example: ACTIVA }
+
+    OperacionReserva:
+      type: object
+      required: [reserva, stock, alerta_umbral]
+      properties:
+        reserva: { $ref: '#/components/schemas/Reserva' }
+        stock: { $ref: '#/components/schemas/Stock' }
+        alerta_umbral: { type: boolean, example: false }
+      example:
+        reserva: { id: RES-0001, repuesto_codigo: REP-6204, cantidad: 4, motivo: Preventivo mensual Caldera 2, estado: ACTIVA }
+        stock: { stock_fisico: 12, stock_reservado: 4, stock_disponible: 8 }
+        alerta_umbral: false

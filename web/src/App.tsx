@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { obtenerHealth } from './api/client'
+import { obtenerHealth, ROLES, usarRol, type Rol } from './api/client'
 import Incidencia from './pages/Incidencia'
 import RegistrarUso from './pages/RegistrarUso'
 import CargarStock from './pages/CargarStock'
@@ -20,6 +20,12 @@ function vistaDesdeHash() {
 export default function App() {
   const [vista, setVista] = useState(vistaDesdeHash)
   const [servicio, setServicio] = useState<EstadoServicio>('verificando')
+  const [rol, setRol] = useState<Rol>('MANTENIMIENTO')
+
+  function cambiarRol(nuevo: Rol) {
+    usarRol(nuevo)
+    setRol(nuevo)
+  }
 
   useEffect(() => {
     const alCambiarHash = () => setVista(vistaDesdeHash())
@@ -43,6 +49,16 @@ export default function App() {
     <div className="app-container">
       <header>
         <h1>{vista.titulo}</h1>
+        <div className="selector-rol">
+          <label htmlFor="rol">Ingresar como</label>
+          <select id="rol" value={rol} onChange={(evento) => cambiarRol(evento.target.value as Rol)}>
+            {ROLES.map((item) => (
+              <option key={item.rol} value={item.rol}>
+                {item.etiqueta}
+              </option>
+            ))}
+          </select>
+        </div>
         <nav aria-label="Navegación principal">
           <ul>
             {VISTAS.map((item) => (
@@ -57,7 +73,7 @@ export default function App() {
       </header>
 
       <main>
-        <Componente key={vista.id} />
+        <Componente key={`${vista.id}-${rol}`} />
       </main>
 
       <footer>

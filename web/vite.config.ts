@@ -9,7 +9,7 @@ export default defineConfig({
         target: 'http://localhost:4010',
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
-      '/health': 'http://localhost:3000',
+      '/health': 'http://localhost:8000',
     },
   },
 })

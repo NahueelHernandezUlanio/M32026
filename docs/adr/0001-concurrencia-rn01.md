@@ -50,5 +50,4 @@ Lo mismo pasa con las reservas (RN-05): una reserva y un uso simultáneos pueden
 - **Negativas:**
   - Dos operaciones sobre el mismo repuesto se serializan. Es aceptable: son operaciones de milisegundos y la contención real (dos empleados con el mismo repuesto en el mismo instante) es baja.
 - **Limitación conocida:**
-  - SQLite (base de desarrollo local y de tests) ignora `FOR UPDATE`. El bloqueo real solo existe en PostgreSQL, que es la base del `docker compose`.
-  - Los tests verifican la barrera del `CHECK` (`test_la_base_impide_stock_fisico_negativo`). Un test de concurrencia real contra PostgreSQL queda pendiente para M5, cuando la suite corra contra el compose.
+  - La suite corre contra PostgreSQL (el mismo motor del `docker compose`), así que `FOR UPDATE` y las `CHECK` se ejercitan de verdad. Los tests verifican la barrera del `CHECK` (`test_la_base_impide_stock_fisico_negativo`); un test con dos transacciones concurrentes sobre el mismo repuesto queda pendiente para M5.

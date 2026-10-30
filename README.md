@@ -29,14 +29,16 @@ docker compose up --build
 | API real (Swagger) | http://localhost:8000/docs |
 | Mock | http://localhost:4010 |
 
-## Levantar sin Docker
+## Levantar en modo desarrollo
 
-Requiere Node 22+, pnpm y uv. Sin Docker, la API usa SQLite (`api/planta.db`) en lugar de PostgreSQL.
+Requiere Node 22+, pnpm, uv y Docker Desktop. La única base del proyecto es PostgreSQL: aunque la API, el mock y la SPA corran local, la base siempre corre en Docker (servicio `db`, puerto 5432).
 
 ```
 pnpm run install:all
 pnpm run dev
 ```
+
+`pnpm run dev` primero levanta `db` con `docker compose up -d --wait db` y después arranca mock, API y SPA.
 
 - SPA: http://localhost:5173
 - API real: http://localhost:8000/docs
@@ -47,7 +49,7 @@ pnpm run dev
 pnpm test
 ```
 
-Corre la suite de pytest del backend: RN-01, RN-02, RN-05/RN-10, RN-08, auth por roles y conformidad con el contrato.
+Levanta `db` si no está corriendo y corre la suite de pytest del backend contra la base `planta_test` del mismo PostgreSQL (se crea sola la primera vez): RN-01, RN-02, RN-05/RN-10, RN-08, auth por roles y conformidad con el contrato.
 
 ## Auth stub (M4)
 
@@ -68,8 +70,9 @@ En la SPA se elige con el selector "Ingresar como" del header.
 | ----------------------- | ------------------------------------------------------ |
 | `pnpm run lint:contrato`| Valida `openapi.yaml` con Redocly                      |
 | `pnpm run gen:api`      | Regenera los tipos TS del cliente desde el contrato    |
-| `pnpm run dev`          | Mock + API + SPA en paralelo                           |
-| `pnpm test`             | Tests del backend                                      |
+| `pnpm run db`           | Levanta solo PostgreSQL en Docker                      |
+| `pnpm run dev`          | `db` + mock + API + SPA en paralelo                    |
+| `pnpm test`             | `db` + tests del backend                               |
 | `pnpm run build`        | Compila la SPA                                         |
 
 ## Forzar respuestas de error en el mock

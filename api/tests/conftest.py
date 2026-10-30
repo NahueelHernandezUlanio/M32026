@@ -1,10 +1,10 @@
+import os
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import event
-from sqlalchemy.pool import StaticPool
+from sqlalchemy import URL, Engine, make_url, text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.auth import USUARIOS_STUB, Usuario
@@ -14,6 +14,9 @@ from app.models import Repuesto, Reserva, Rol
 from app.notificaciones import get_notificador
 from app.seed import sembrar
 
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL", "postgresql+psycopg://planta:planta@localhost:5432/planta_test"
+)
 TOKENS = {usuario.rol: token for token, usuario in USUARIOS_STUB.items()}
 
 
@@ -29,15 +32,34 @@ class NotificadorFalso:
         self.liberaciones.append((reserva.codigo, autorizada_por))
 
 
-@pytest.fixture
-def session() -> Iterator[Session]:
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    event.listen(engine, "connect", lambda conexion, _: conexion.execute("PRAGMA foreign_keys=ON"))
+def _crear_base_si_no_existe(url: URL) -> None:
+    servidor = create_engine(url.set(database="postgres"), isolation_level="AUTOCOMMIT")
+    with servidor.connect() as conexion:
+        existe = conexion.execute(
+            text("SELECT 1 FROM pg_database WHERE datname = :nombre"), {"nombre": url.database}
+        ).scalar()
+        if not existe:
+            conexion.execute(text(f'CREATE DATABASE "{url.database}"'))
+    servidor.dispose()
+
+
+@pytest.fixture(scope="session")
+def engine() -> Iterator[Engine]:
+    url = make_url(TEST_DATABASE_URL)
+    _crear_base_si_no_existe(url)
+    engine = create_engine(url)
+    SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture
+def session(engine: Engine) -> Iterator[Session]:
+    """Cada test arranca con las tablas vacías, los ids reiniciados y el seed cargado."""
+    tablas = ", ".join(f'"{tabla.name}"' for tabla in SQLModel.metadata.sorted_tables)
+    with engine.begin() as conexion:
+        conexion.execute(text(f"TRUNCATE {tablas} RESTART IDENTITY CASCADE"))
     with Session(engine) as session:
         sembrar(session)
         yield session

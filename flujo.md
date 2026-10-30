@@ -100,7 +100,7 @@ FastAPI + SQLModel + Alembic, gestionado con **uv**. Es el stack que fija la cá
   repositories.py Acceso a datos: consultas SQL y bloqueos. No sabe nada de reglas
      │
      ▼
-  models.py       Tablas (SQLModel)  ──►  PostgreSQL (Docker) o SQLite (local / tests)
+  models.py       Tablas (SQLModel)  ──►  PostgreSQL (siempre en Docker)
 ```
 
 Cada capa solo conoce a la de abajo. Por eso las reglas se pueden testear llamando directo al servicio, sin HTTP, y el día de mañana se puede cambiar la base sin tocar las reglas.
@@ -120,7 +120,7 @@ Cada capa solo conoce a la de abajo. Por eso las reglas se pueden testear llaman
 | `errores.py` | Errores de dominio (`NoEncontrado`, `ReglaDeNegocio`, `PermisoDenegado`, `NoAutenticado`) con su código HTTP |
 | `dependencias.py` | Arma cada servicio con su sesión de base y su notificador (inyección de dependencias de FastAPI) |
 | `almacenamiento.py` | Guarda fotos y remitos en disco (`UPLOAD_DIR`) con nombre único |
-| `db.py` / `config.py` | Conexión a la base. La URL sale de `DATABASE_URL`: si no está, usa SQLite local |
+| `db.py` / `config.py` | Conexión a la base. La URL sale de `DATABASE_URL`: si no está, apunta al PostgreSQL del compose en `localhost:5432` |
 | `seed.py` | Carga datos de ejemplo si la base está vacía: 3 ubicaciones, 3 máquinas, 2 repuestos (`REP-6204` con stock 12 y mínimo 5, `REP-0100`) y 2 incidencias en reparación (`INC-0001`, `INC-0002`) |
 
 ### 4.3 Cómo se cumplen las reglas de negocio
@@ -148,7 +148,7 @@ Si dos empleados usan la última unidad al mismo tiempo, el servicio bloquea la 
 
 ### 4.6 Tests (`tests/`)
 
-pytest + TestClient. Cada test usa una base SQLite en memoria nueva, con el seed cargado, y un notificador falso que registra los avisos.
+pytest + TestClient contra la base `planta_test` del mismo PostgreSQL del compose (la URL sale de `TEST_DATABASE_URL`). Antes de cada test se vacían las tablas con los ids reiniciados y se carga el seed. Cada test usa además un notificador falso que registra los avisos.
 
 | Archivo | Qué prueba |
 |---|---|
@@ -163,7 +163,7 @@ Se corren con `pnpm test` desde la raíz (50 tests).
 ### 4.7 Docker
 
 - `Dockerfile`: imagen `python:3.13-slim` con uv. Instala dependencias desde `uv.lock`, corre migraciones y seed, y levanta uvicorn en el puerto 8000. Trae un `HEALTHCHECK` sobre `/health`.
-- `.dockerignore`: deja afuera `.venv`, tests, uploads y bases locales.
+- `.dockerignore`: deja afuera `.venv`, tests y uploads.
 
 ---
 
@@ -233,20 +233,21 @@ Levanta los 4 servicios con `docker compose up --build`. Requiere Docker Desktop
 
 | Servicio | Qué es | Puerto |
 |---|---|---|
-| `db` | PostgreSQL 16, con los datos en un volumen | interno |
+| `db` | PostgreSQL 16, con los datos en un volumen. Es la única base del proyecto: también la usan la API local y los tests | 5432 |
 | `mock` | Prism 5.14.3 leyendo `openapi.yaml` | 4010 |
 | `api` | FastAPI. Espera a que la base esté lista, migra, carga el seed y arranca | 8000 (Swagger en `/docs`) |
 | `web` | La SPA servida con nginx | 8080 → http://localhost:8080 |
 
 ### `package.json`
 
-Scripts para trabajar sin Docker (con pnpm):
+Scripts para trabajar en local (con pnpm). La base siempre corre en Docker:
 
 | Comando | Cuándo usarlo |
 |---|---|
 | `pnpm run install:all` | Una vez, después de clonar: instala todo (JS con pnpm, Python con uv) |
-| `pnpm run dev` | Para trabajar día a día: mock + API + SPA (http://localhost:5173) |
-| `pnpm test` | Antes de cada PR: corre los tests del backend |
+| `pnpm run db` | Levanta solo PostgreSQL en Docker y espera a que esté listo |
+| `pnpm run dev` | Para trabajar día a día: `db` + mock + API + SPA (http://localhost:5173) |
+| `pnpm test` | Antes de cada PR: levanta `db` y corre los tests del backend |
 | `pnpm run lint:contrato` | Después de editar `openapi.yaml` |
 | `pnpm run gen:api` | Después de editar `openapi.yaml`, para regenerar los tipos de la SPA |
 | `pnpm run build` | Para comprobar que la SPA compila |
@@ -255,7 +256,7 @@ Scripts para trabajar sin Docker (con pnpm):
 
 - `README.md`: instrucciones para levantar el proyecto.
 - `docs/adr/`: decisiones de arquitectura.
-- `.gitignore`: deja afuera dependencias, compilados, `.venv`, bases locales y archivos subidos.
+- `.gitignore`: deja afuera dependencias, compilados, `.venv` y archivos subidos.
 
 ---
 

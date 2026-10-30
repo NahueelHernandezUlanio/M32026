@@ -7,11 +7,12 @@
     "install:all": "pnpm install && pnpm --dir web install && uv --directory api sync",
     "lint:contrato": "redocly lint openapi.yaml",
     "gen:api": "pnpm --dir web run gen:api",
+    "db": "docker compose up -d --wait db",
     "dev:mock": "prism mock openapi.yaml",
     "dev:api": "uv --directory api run alembic upgrade head && uv --directory api run python -m app.seed && uv --directory api run uvicorn app.main:app --reload --port 8000",
     "dev:web": "pnpm --dir web run dev",
-    "dev": "concurrently -n mock,api,web -c magenta,green,cyan \"pnpm:dev:mock\" \"pnpm:dev:api\" \"pnpm:dev:web\"",
-    "test": "uv --directory api run pytest",
+    "dev": "pnpm run db && concurrently -n mock,api,web -c magenta,green,cyan \"pnpm:dev:mock\" \"pnpm:dev:api\" \"pnpm:dev:web\"",
+    "test": "pnpm run db && uv --directory api run pytest",
     "build": "pnpm --dir web run build"
   },
   "devDependencies": {

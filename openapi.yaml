@@ -4,9 +4,6 @@ info:
   title: API de Stock y Mantenimiento de Planta
   version: 0.2.0
   description: |
-    Contrato v0.2 (M4). Cubre las 3 vistas del prototipo (incidencia, registrar uso, cargar stock)
-    más el ciclo de reservas (RN-05, RN-10) y el auth stub con roles.
-
     Auth stub: header `Authorization: Bearer <token>` con uno de estos tokens fijos:
     `token-operario`, `token-mantenimiento`, `token-encargado`, `token-consulta`.
 

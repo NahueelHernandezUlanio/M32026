@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI(
     title="API de Stock y Mantenimiento de Planta",
     version="0.2.0",
-    description="Backend M4: FastAPI + SQLModel + Repository + Service Layer.",
+    description="Grupo 3 - S32",
 )
 
 

@@ -1,4 +1,4 @@
-# ADR 0001 — Concurrencia en el descuento de stock (RN-01)
+# ADR 0001: Concurrencia en el descuento de stock (RN-01)
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-10-29
@@ -43,11 +43,8 @@ Lo mismo pasa con las reservas (RN-05): una reserva y un uso simultáneos pueden
 
 ## Consecuencias
 
-- **Positivas:**
-  - RN-01 y RN-05 se cumplen bajo concurrencia sin reintentos.
-  - El usuario recibe siempre un error de negocio claro.
-  - La invariante "stock físico ≥ 0" está garantizada por la base.
-- **Negativas:**
-  - Dos operaciones sobre el mismo repuesto se serializan. Es aceptable: son operaciones de milisegundos y la contención real (dos empleados con el mismo repuesto en el mismo instante) es baja.
-- **Limitación conocida:**
-  - La suite corre contra PostgreSQL (el mismo motor del `docker compose`), así que `FOR UPDATE` y las `CHECK` se ejercitan de verdad. Los tests verifican la barrera del `CHECK` (`test_la_base_impide_stock_fisico_negativo`); un test con dos transacciones concurrentes sobre el mismo repuesto queda pendiente para M5.
+RN-01 y RN-05 se cumplen bajo concurrencia sin reintentos, el usuario recibe un error de negocio claro y la base garantiza que el stock físico nunca quede negativo.
+
+A cambio, dos operaciones sobre el mismo repuesto esperan una a la otra. Son operaciones de milisegundos y es raro que dos empleados usen el mismo repuesto en el mismo instante.
+
+Los tests cubren la `CHECK` (`test_la_base_impide_stock_fisico_negativo`). Falta un test con dos transacciones concurrentes reales, queda para M5.

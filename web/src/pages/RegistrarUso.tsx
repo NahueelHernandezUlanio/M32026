@@ -122,7 +122,7 @@ export default function RegistrarUso() {
         </div>
       )}
       {alertaUmbral && (
-        <div className="mensaje-aviso" role="status">El stock llegó al mínimo. Se generó un pedido de compra</div>
+        <div className="mensaje-aviso" role="status">El stock llegó al mínimo. El repuesto pasa a la lista de compras.</div>
       )}
     </section>
   )

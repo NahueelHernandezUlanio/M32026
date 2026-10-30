@@ -1,6 +1,6 @@
 # Stock y Mantenimiento de Planta
 
-Grupo 3 — Desarrollo de Software — S32 — UTN. Hernandez, Hrynkiewicz, Hurst.
+Grupo 3 - Desarrollo de Software - S32 - UTN. Hernandez, Hrynkiewicz, Hurst.
 
 Explicación detallada de cada parte en [flujo.md](flujo.md). Decisiones de arquitectura en [docs/adr/](docs/adr/).
 
@@ -77,7 +77,7 @@ En la SPA se elige con el selector "Ingresar como" del header.
 
 ## Forzar respuestas de error en el mock
 
-Prism devuelve el ejemplo del código 2xx por defecto. Para ver otro código del contrato se usa el header `Prefer`:
+Con el header `Prefer`:
 
 ```
 curl -X POST http://localhost:4010/repuestos/REP-6204/usos \
